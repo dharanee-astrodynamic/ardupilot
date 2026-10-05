@@ -179,19 +179,132 @@ Initial bring-up order:
 3. Confirm the nozzles are mechanically centred at the trim PWM.
 4. Start with low rate gains and tether the aircraft for the first spool-up.
 
-## 6. Building
+## 6. Building and uploading the firmware
+
+The nozzle support is not in any released firmware, so the stock firmware from
+Mission Planner or QGroundControl will not work: it does not know servo functions 190
+and 191. Build the firmware from this tree and upload it as a custom firmware.
+
+Never run `waf` with `sudo`, and always call `./waf` from the repository root.
+`./waf configure` selects the board for the following builds, so configure again when
+you switch between SITL and hardware.
+
+### 6.1 SITL
 
 ```sh
-# SITL
 ./waf configure --board sitl
-./waf plane
-
-# Hardware (replace with your board)
-./waf configure --board <BoardName>
 ./waf plane
 ```
 
-Never run `waf` with `sudo`. Use `./waf list_boards` to see available boards.
+### 6.2 Pixhawk 6X
+
+Requirements: the ArduPilot build prerequisites (`Tools/environment_install/install-prereqs-ubuntu.sh`)
+and the `arm-none-eabi` toolchain. The build below was checked with `arm-none-eabi-gcc` 10-2020-q4.
+
+```sh
+git submodule update --init --recursive    # once
+./waf configure --board Pixhawk6X
+./waf plane
+```
+
+A build takes about 3 minutes. The result is in `build/Pixhawk6X/bin/`:
+
+| File | Use |
+|---|---|
+| `arduplane.apj` | Upload with Mission Planner, QGroundControl or `uploader.py`. Use this one. |
+| `arduplane_with_bl.hex` | Bootloader and firmware in one file, for DFU recovery only. |
+| `arduplane`, `arduplane.bin`, `arduplane.abin` | Not needed for a normal upload. |
+
+On this tree the build uses 1.70 MB of flash and leaves about 268 KB free.
+
+Pick the board name that matches your hardware:
+
+| Board | `--board` |
+|---|---|
+| Pixhawk 6X | `Pixhawk6X` |
+| Pixhawk 6X, bidirectional DShot | `Pixhawk6X-bdshot` |
+| Pixhawk 6X with Open Drone ID | `Pixhawk6X-ODID` |
+| Pixhawk 6C | `Pixhawk6C` |
+
+Other boards: `./waf list_boards`. The `Pixhawk6X` firmware does not run on a 6C or
+the reverse, because the board identifiers differ and the bootloader refuses the file.
+
+The version string shows the git hash and `-dirty` when there are uncommitted changes.
+Commit the work on a branch before building a firmware for flight, so the
+version reported by the autopilot identifies exactly what was built.
+
+### 6.3 Uploading to the board
+
+Connect the Pixhawk 6X to the computer with USB. Remove the EDFs or disconnect
+the ESCs, and keep the nozzle linkages free to move, while flashing and
+configuring.
+
+**Mission Planner (Windows)**
+
+1. Close any open connection to the board.
+2. Open Setup, Install Firmware, then choose *Load custom firmware* at the bottom.
+3. Select `build/Pixhawk6X/bin/arduplane.apj`.
+4. Follow the prompts, and plug the board in when asked. Wait for the
+   "Upload Done" message and the reboot.
+
+**QGroundControl**
+
+1. Unplug the board and open Vehicle Setup, Firmware.
+2. Plug the board in, and tick *Advanced settings*.
+3. Choose *Custom firmware file...* in the drop-down, then select `arduplane.apj`.
+
+**Command line (Linux)**
+
+```sh
+# the board can be running ArduPilot, the uploader reboots it into the bootloader
+Tools/scripts/uploader.py --port /dev/serial/by-id/usb-*Pixhawk* build/Pixhawk6X/bin/arduplane.apj
+
+# or build and upload in one step
+./waf configure --board Pixhawk6X
+./waf plane --upload
+```
+
+If the port cannot be opened, add your user to the `dialout` group (log out and in
+again), and remove `modemmanager`, which grabs the USB port while the board is in the bootloader:
+`sudo apt remove modemmanager`. If the board does not show up, unplug it, start the
+upload, and plug it in again: the bootloader waits a few seconds for an upload.
+
+The firmware replaces the old one and keeps the parameters. If the board does
+not boot afterwards, flash `arduplane_with_bl.hex` over DFU (for example with
+`dfu-util` or the STM32 programmer), or flash the
+stock firmware again. Put the board in DFU mode as described in the ArduPilot
+documentation for the board.
+
+### 6.4 After flashing
+
+1. Connect the ground station and read the first messages. They should show
+   `ArduPlane V` with the git hash of your build.
+2. Set the parameters in section 5, then reboot. The ground station parameter list does
+   not know servo functions 190 and 191 (it gets its parameter descriptions from the
+   stock firmware), so type the numbers in.
+3. With no EDFs or propellers fitted, check each servo output with the servo test in the
+   ground station: nozzle pitch, nozzle lateral axis, elevons and both ESC channels.
+   Fix directions with `SERVOn_REVERSED` as in the bring-up steps of section 5.
+4. If arming is refused with `TAILSIT nozzles need Q_TAILSIT_VHGAIN>0 and servo
+   functions 75, 76, 190, 191, reboot`, one of those functions is missing or the
+   board was not rebooted after setting it.
+5. Calibrate the accelerometer, compass and radio as for any aircraft, and check
+   the flight mode switch includes QHOVER or QSTABILIZE and a fixed wing mode.
+
+Outputs on the Pixhawk 6X: the MAIN outputs are on the IO coprocessor, and AUX 1 to
+8 are on the FMU, as `SERVO9` to `SERVO16`. The AUX outputs share timers in groups of AUX 1 to 4, AUX 5 and 6, and AUX 7 and 8
+(see `libraries/AP_HAL_ChibiOS/hwdef/Pixhawk6X/hwdef.dat`). Outputs in one group
+have the same rate, so keep ESCs and servos with different rates in different
+groups, or use the same rate for both. Check the manufacturer documentation for the
+timing groups of the MAIN outputs. The assignment in section 4 is a suggestion, and
+any free outputs can be used.
+
+### 6.5 Going back to stock firmware
+
+Set `SERVOn_FUNCTION` to 0 for any output with function 190 or 191 first, then
+install the stock Plane firmware from Mission Planner or QGroundControl as usual.
+The nozzle parameters stay in the parameter list but are not used. Resetting the
+parameters to default from the ground station gives a clean start.
 
 ## 7. Testing in SITL
 
