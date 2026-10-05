@@ -187,6 +187,11 @@ bool AP_Arming_Plane::quadplane_checks(bool display_failure)
             ret = false;
         }
 
+        if (plane.quadplane.tailsitter.enabled() && plane.quadplane.tailsitter.nozzle_setup_incomplete()) {
+            check_failed(Check::PARAMETERS, display_failure, "TAILSIT nozzles need Q_TAILSIT_VHGAIN>0 and servo functions 75, 76, 190, 191, reboot");
+            ret = false;
+        }
+
         if ((plane.quadplane.tiltrotor.enable > 0) && !plane.quadplane.tiltrotor.enabled()) {
             check_failed(Check::PARAMETERS, display_failure, "tiltrotor setup not complete, reboot");
             ret = false;

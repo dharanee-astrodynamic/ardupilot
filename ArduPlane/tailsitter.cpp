@@ -224,6 +224,16 @@ void Tailsitter::setup()
                     (SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeft) ||
                      SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRight)));
 
+    // nozzle only hover requires both nozzles to have a pitch-plane and a lateral servo
+    _have_lateral_nozzles = SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeftLat) ||
+                            SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRightLat);
+    _nozzle_only_hover = (quadplane.frame_class == AP_Motors::MOTOR_FRAME_TAILSITTER) &&
+                         is_positive(vectored_hover_gain) &&
+                         SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeft) &&
+                         SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRight) &&
+                         SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeftLat) &&
+                         SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRightLat);
+
     _have_elevator = SRV_Channels::function_assigned(SRV_Channel::k_elevator);
     _have_aileron = SRV_Channels::function_assigned(SRV_Channel::k_aileron);
     _have_rudder = SRV_Channels::function_assigned(SRV_Channel::k_rudder);
@@ -261,6 +271,55 @@ bool Tailsitter::is_control_surface_tailsitter(void) const
 {
     return quadplane.frame_class == AP_Motors::MOTOR_FRAME_TAILSITTER
            && ( is_zero(vectored_hover_gain) || !SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeft));
+}
+
+/*
+  return the scale on the copter controller demand sent to the control
+  surfaces when hover is nozzle only. The surfaces only help the nozzles
+  when there is enough airspeed for them to be effective, for example
+  in the transitions. The scale fades in between half and full AIRSPEED_MIN
+  and is then reduced with the dynamic pressure, so the total gain does not
+  grow with airspeed. Without an airspeed estimate the nozzles work alone.
+ */
+float Tailsitter::nozzle_surface_scale(void)
+{
+    float aspeed;
+    const float min_aspeed = plane.aparm.airspeed_min;
+    if (!is_positive(min_aspeed) || !quadplane.ahrs.airspeed_EAS(aspeed)) {
+        return 0.0;
+    }
+    const float fade = constrain_float((aspeed - 0.5 * min_aspeed) / (0.5 * min_aspeed), 0.0, 1.0);
+    return fade / MAX(1.0, sq(aspeed / min_aspeed));
+}
+
+/*
+  centre all control surfaces, including flaps and spoilers, when hover is nozzle only
+  the surfaces are left to the fixed wing controller while the nose is raised on the transition to VTOL
+  the surfaces that follow the copter controller are left alone while they assist the nozzles
+ */
+void Tailsitter::neutralise_surfaces(void)
+{
+    if (!_nozzle_only_hover || !active() || in_vtol_transition()) {
+        return;
+    }
+    for (uint8_t i = 0; i < NUM_SERVO_CHANNELS; i++) {
+        const SRV_Channel *chan = SRV_Channels::srv_channel(i);
+        if (chan == nullptr || !SRV_Channel::is_control_surface(chan->get_function())) {
+            continue;
+        }
+        const SRV_Channel::Function function = chan->get_function();
+        if (is_positive(_surface_scale) &&
+            (function == SRV_Channel::Function::k_aileron ||
+             function == SRV_Channel::Function::k_elevator ||
+             function == SRV_Channel::Function::k_rudder ||
+             function == SRV_Channel::Function::k_elevon_left ||
+             function == SRV_Channel::Function::k_elevon_right ||
+             function == SRV_Channel::Function::k_vtail_left ||
+             function == SRV_Channel::Function::k_vtail_right)) {
+            continue;
+        }
+        SRV_Channels::set_output_scaled(function, 0);
+    }
 }
 
 /*
@@ -353,18 +412,25 @@ void Tailsitter::output(void)
             float tilt_left = 0.0;
             float tilt_right = 0.0;
 
+            // the nozzles support the surfaces while the nose is raised on the transition to VTOL
+            const float tilt_gain = (_nozzle_only_hover && in_vtol_transition()) ? MAX(vectored_forward_gain, vectored_hover_gain) : vectored_forward_gain;
+
             // in forward flight: set motor tilt servos and throttles using FW controller
-            if (vectored_forward_gain > 0) {
+            if (tilt_gain > 0) {
                 // remove scaling from surface speed scaling and apply throttle scaling
                 const float scaler = plane.control_mode == &plane.mode_manual?1:(quadplane.FW_vector_throttle_scaling() / plane.get_speed_scaler());
                 // thrust vectoring in fixed wing flight
                 float aileron = SRV_Channels::get_output_scaled(SRV_Channel::k_aileron);
                 float elevator = SRV_Channels::get_output_scaled(SRV_Channel::k_elevator);
-                tilt_left  = (elevator + aileron) * vectored_forward_gain * scaler;
-                tilt_right = (elevator - aileron) * vectored_forward_gain * scaler;
+                tilt_left  = (elevator + aileron) * tilt_gain * scaler;
+                tilt_right = (elevator - aileron) * tilt_gain * scaler;
             }
             SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, tilt_left);
             SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, tilt_right);
+
+            // lateral nozzle axis is only used for VTOL roll control
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftLat, 0.0);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightLat, 0.0);
             return;
         }
     }
@@ -414,6 +480,8 @@ void Tailsitter::output(void)
             // No output unless hover gain is set
             float tilt_left = 0.0;
             float tilt_right = 0.0;
+            float tilt_lateral_left = 0.0;
+            float tilt_lateral_right = 0.0;
 
             if (vectored_hover_gain > 0) {
                 const float hover_throttle = motors->get_throttle_hover();
@@ -424,9 +492,13 @@ void Tailsitter::output(void)
                 }
                 tilt_left = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft) * vectored_hover_gain * throttle_scaler;
                 tilt_right = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorRight) * vectored_hover_gain * throttle_scaler;
+                tilt_lateral_left = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeftLat) * vectored_hover_gain * throttle_scaler;
+                tilt_lateral_right = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorRightLat) * vectored_hover_gain * throttle_scaler;
             }
             SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, tilt_left);
             SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, tilt_right);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftLat, tilt_lateral_left);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightLat, tilt_lateral_right);
 
 
             // skip remainder of the function that overwrites plane control surface outputs with copter
@@ -446,6 +518,14 @@ void Tailsitter::output(void)
     SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, (motors->get_pitch()+motors->get_pitch_ff())*SERVO_MAX*VTOL_pitch_scale);
     SRV_Channels::set_output_scaled(SRV_Channel::k_rudder, (motors->get_roll()+motors->get_roll_ff())*SERVO_MAX*VTOL_roll_scale);
 
+    if (_nozzle_only_hover) {
+        // the nozzles are the main hover actuators, the surfaces only help when there is airspeed
+        _surface_scale = nozzle_surface_scale();
+        SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, SRV_Channels::get_output_scaled(SRV_Channel::k_aileron) * _surface_scale);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, SRV_Channels::get_output_scaled(SRV_Channel::k_elevator) * _surface_scale);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_rudder, SRV_Channels::get_output_scaled(SRV_Channel::k_rudder) * _surface_scale);
+    }
+
     if (plane.arming.is_armed_and_safety_off()) {
         // scale surfaces for throttle
         speed_scaling();
@@ -456,11 +536,15 @@ void Tailsitter::output(void)
     // No tilt output unless hover gain is set
     float tilt_left = 0.0;
     float tilt_right = 0.0;
+    float tilt_lateral_left = 0.0;
+    float tilt_lateral_right = 0.0;
 
     if (vectored_hover_gain > 0) {
         // thrust vectoring VTOL modes
         tilt_left = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
         tilt_right = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorRight);
+        tilt_lateral_left = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeftLat) * vectored_hover_gain;
+        tilt_lateral_right = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorRightLat) * vectored_hover_gain;
         /*
           apply extra elevator when at high pitch errors, using a
           power law. This allows the motors to point straight up for
@@ -479,10 +563,13 @@ void Tailsitter::output(void)
     }
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, tilt_left);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, tilt_right);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftLat, tilt_lateral_left);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightLat, tilt_lateral_right);
 
     // Check for saturated limits
     bool tilt_lim = _is_vectored && ((fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorLeft)) >= SERVO_MAX) || (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorRight)) >= SERVO_MAX));
     bool roll_lim = _have_rudder && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_rudder)) >= SERVO_MAX);
+    roll_lim |= _is_vectored && ((fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorLeftLat)) >= SERVO_MAX) || (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorRightLat)) >= SERVO_MAX));
     bool pitch_lim = _have_elevator && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_elevator)) >= SERVO_MAX);
     bool yaw_lim = _have_aileron && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_aileron)) >= SERVO_MAX);
 
@@ -783,10 +870,13 @@ void Tailsitter::speed_scaling(void)
         SRV_Channel::Function::k_elevator,
         SRV_Channel::Function::k_rudder,
         SRV_Channel::Function::k_tiltMotorLeft,
-        SRV_Channel::Function::k_tiltMotorRight};
+        SRV_Channel::Function::k_tiltMotorRight,
+        SRV_Channel::Function::k_tiltMotorLeftLat,
+        SRV_Channel::Function::k_tiltMotorRightLat};
     for (uint8_t i=0; i<ARRAY_SIZE(functions); i++) {
         float v = SRV_Channels::get_output_scaled(functions[i]);
-        if ((functions[i] == SRV_Channel::Function::k_tiltMotorLeft) || (functions[i] == SRV_Channel::Function::k_tiltMotorRight)) {
+        if ((functions[i] == SRV_Channel::Function::k_tiltMotorLeft) || (functions[i] == SRV_Channel::Function::k_tiltMotorRight) ||
+            (functions[i] == SRV_Channel::Function::k_tiltMotorLeftLat) || (functions[i] == SRV_Channel::Function::k_tiltMotorRightLat)) {
             // always apply throttle scaling to tilts
             v *= throttle_scaler;
         } else {

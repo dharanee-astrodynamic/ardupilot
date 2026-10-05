@@ -225,6 +225,8 @@ public:
         k_actuator4             = 187,
         k_actuator5             = 188,
         k_actuator6             = 189,
+        k_tiltMotorLeftLat      = 190,   ///< tailsitter vectored thrust, left nozzle lateral axis
+        k_tiltMotorRightLat     = 191,   ///< tailsitter vectored thrust, right nozzle lateral axis
         k_nr_aux_servo_functions         ///< This must be the last enum value (only add new values _before_ this one)
     } Function;
 

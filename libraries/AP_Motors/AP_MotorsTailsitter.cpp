@@ -34,6 +34,9 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
     // setup default motor and servo mappings
     _has_diff_thrust = SRV_Channels::function_assigned(SRV_Channel::k_throttleRight) || SRV_Channels::function_assigned(SRV_Channel::k_throttleLeft);
 
+    // nozzles with a lateral axis provide roll control, replacing differential thrust
+    _has_lateral_vectoring = SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeftLat) || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRightLat);
+
     // right throttle defaults to servo output 1
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_throttleRight, CH_1);
 
@@ -110,6 +113,8 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftLat, _tilt_lateral*SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightLat, _tilt_lateral*SERVO_OUTPUT_RANGE);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -145,6 +150,15 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     // apply voltage and air pressure compensation
     const float compensation_gain = thr_lin.get_compensation_gain();
     roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
+    _tilt_lateral = 0.0f;
+    if (_has_lateral_vectoring) {
+        // roll is produced by vectoring both nozzles in the same direction, thrust is not split
+        _tilt_lateral = constrain_float(_roll_in + _roll_in_ff, -1.0f, 1.0f);
+        if (fabsf(_roll_in + _roll_in_ff) >= 1.0f) {
+            limit.roll = true;
+        }
+        roll_thrust = 0.0f;
+    }
     pitch_thrust = _pitch_in + _pitch_in_ff;
     yaw_thrust = _yaw_in + _yaw_in_ff;
     throttle_thrust = get_throttle() * compensation_gain;

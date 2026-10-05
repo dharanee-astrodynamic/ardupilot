@@ -1048,6 +1048,11 @@ void Plane::servos_output(void)
     // implement differential spoilers
     dspoiler_update();
 
+#if HAL_QUADPLANE_ENABLED
+    // no control surface output in nozzle only tailsitter hover
+    quadplane.tailsitter.neutralise_surfaces();
+#endif
+
     //  set control surface servos to neutral
     landing_neutral_control_surface_servos();
     

@@ -1472,6 +1472,109 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
                 raise NotAchievedException("Changed throttle output on mode change to QHOVER")
         self.disarm_vehicle()
 
+    def TailsitterLateralNozzles(self):
+        '''tailsitter hover controlled only by 2-axis vectored nozzles'''
+        self.customise_SITL_commandline(
+            [],
+            model="plane-tailsitter",
+            wipe=True,
+        )
+        self.set_parameters({
+            'SERVO5_FUNCTION': 190,  # left nozzle lateral axis
+            'SERVO6_FUNCTION': 191,  # right nozzle lateral axis
+        })
+        self.reboot_sitl()
+        self.progress("Incomplete nozzle setup must not arm")
+        self.assert_prearm_failure("TAILSIT nozzles need", other_prearm_failures_fatal=False)
+
+        self.set_parameters({
+            'SERVO1_FUNCTION': 73,  # left throttle
+            'SERVO2_FUNCTION': 74,  # right throttle
+            'SERVO5_FUNCTION': 190,  # left nozzle lateral axis
+            'SERVO6_FUNCTION': 191,  # right nozzle lateral axis
+            'SERVO7_FUNCTION': 75,  # left nozzle pitch axis
+            'SERVO8_FUNCTION': 76,  # right nozzle pitch axis
+            'SERVO9_FUNCTION': 4,  # aileron
+            'SERVO10_FUNCTION': 19,  # elevator
+            'SERVO11_FUNCTION': 21,  # rudder
+            'AIRSPEED_MIN': 40,  # surfaces only assist the nozzles at an airspeed near this
+        })
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+
+        self.change_mode('QHOVER')
+        self.arm_vehicle()
+        self.set_rc(3, 1700)
+        self.delay_sim_time(3, reason="spool up")
+
+        trims = {chan: self.get_parameter(f'SERVO{chan}_TRIM') for chan in (5, 6, 9, 10, 11)}
+        self.progress("Applying roll demand")
+        self.set_rc(1, 1800)
+        lateral_moved = False
+        tstart = self.get_sim_time()
+        while self.get_sim_time_cached() - tstart < 5:
+            # all outputs are taken from one message so they are consistent in time
+            m = self.assert_receive_message('SERVO_OUTPUT_RAW')
+            if abs(m.servo1_raw - m.servo2_raw) > 2:
+                raise NotAchievedException(f"Differential thrust used: {m.servo1_raw} {m.servo2_raw}")
+            for chan, value in ((9, m.servo9_raw), (10, m.servo10_raw), (11, m.servo11_raw)):
+                if abs(value - trims[chan]) > 5:
+                    raise NotAchievedException(f"Control surface on servo {chan} moved in hover: {value} != {trims[chan]}")
+            dev5 = m.servo5_raw - trims[5]
+            dev6 = m.servo6_raw - trims[6]
+            if abs(dev5) > 50 and abs(dev6) > 50 and (dev5 > 0) == (dev6 > 0):
+                lateral_moved = True
+        if not lateral_moved:
+            raise NotAchievedException("Lateral nozzles did not move together")
+        self.set_rc(1, 1500)
+        self.set_rc(3, 1000)
+        self.disarm_vehicle(force=True)
+
+    def TailsitterNozzleSurfaceAssist(self):
+        '''tailsitter nozzle only hover uses control surfaces when there is airspeed'''
+        self.customise_SITL_commandline(
+            [],
+            model="plane-tailsitter",
+            wipe=True,
+        )
+        self.set_parameters({
+            'SERVO1_FUNCTION': 73,  # left throttle
+            'SERVO2_FUNCTION': 74,  # right throttle
+            'SERVO5_FUNCTION': 190,  # left nozzle lateral axis
+            'SERVO6_FUNCTION': 191,  # right nozzle lateral axis
+            'SERVO7_FUNCTION': 75,  # left nozzle pitch axis
+            'SERVO8_FUNCTION': 76,  # right nozzle pitch axis
+            'SERVO10_FUNCTION': 19,  # elevator
+            'AIRSPEED_MIN': 5,  # the airflow in a climbing hover is enough to fade the surfaces in
+        })
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+
+        self.change_mode('QHOVER')
+        self.arm_vehicle()
+        self.set_rc(3, 1700)
+        self.delay_sim_time(3, reason="spool up")
+
+        trim = self.get_parameter('SERVO10_TRIM')
+        self.progress("Applying pitch demand")
+        self.set_rc(2, 1200)
+        surface_moved = False
+        nozzle_moved = False
+        tstart = self.get_sim_time()
+        while self.get_sim_time_cached() - tstart < 5:
+            m = self.assert_receive_message('SERVO_OUTPUT_RAW')
+            if abs(m.servo10_raw - trim) > 20:
+                surface_moved = True
+            if abs(m.servo7_raw - self.get_parameter('SERVO7_TRIM')) > 50:
+                nozzle_moved = True
+        if not surface_moved:
+            raise NotAchievedException("Elevator did not assist the nozzles in hover with airspeed")
+        if not nozzle_moved:
+            raise NotAchievedException("Nozzles did not move")
+        self.set_rc(2, 1500)
+        self.set_rc(3, 1000)
+        self.disarm_vehicle(force=True)
+
     def CopterTailsitter(self):
         '''copter tailsitter test'''
         self.customise_SITL_commandline(
@@ -4506,6 +4609,8 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             self.Weathervane,
             self.GyroFFT,
             self.Tailsitter,
+            self.TailsitterLateralNozzles,
+            self.TailsitterNozzleSurfaceAssist,
             self.ICEngineRPMGovernor,
             self.MidAirDisarmDisallowed,
             self.GUIDEDToAUTO,

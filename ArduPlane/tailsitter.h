@@ -39,6 +39,15 @@ public:
 
     // return true when flying a tailsitter in VTOL
     bool active(void);
+
+    // return true if hover is controlled only by 2-axis vectored nozzles
+    bool nozzle_only_hover() const { return _nozzle_only_hover; }
+
+    // return true if lateral nozzle servos are assigned but the nozzle setup is incomplete
+    bool nozzle_setup_incomplete() const { return _have_lateral_nozzles && !_nozzle_only_hover; }
+
+    // centre control surfaces when hover is nozzle only, except where they assist the nozzles
+    void neutralise_surfaces(void);
     
     // create outputs for tailsitters
     void output(void);
@@ -136,6 +145,18 @@ private:
 
     // true when flying a tilt-vectored tailsitter
     bool _is_vectored;
+
+    // true if lateral nozzle servos are assigned
+    bool _have_lateral_nozzles;
+
+    // true if hover uses only 2-axis vectored nozzles, with no differential thrust and no control surfaces
+    bool _nozzle_only_hover;
+
+    // scale from 0 to 1 on the copter controller demand sent to the control surfaces in nozzle only hover
+    float _surface_scale;
+
+    // return the scale on the control surface demand in nozzle only hover, based on airspeed
+    float nozzle_surface_scale(void);
 
     // true is outputs are configured
     bool _have_elevator;

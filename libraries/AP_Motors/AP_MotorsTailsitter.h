@@ -48,6 +48,7 @@ protected:
     float _throttle; // 0..1
     float _tilt_left;  // -1..1
     float _tilt_right;  // -1..1
+    float _tilt_lateral = 0.0f;  // -1..1, lateral nozzle axis, same demand for both nozzles
     float _thrust_left;  // 0..1
     float _thrust_right;  // 0..1
 
@@ -56,5 +57,8 @@ protected:
 
     // true if differential thrust is available
     bool _has_diff_thrust;
+
+    // true if the nozzles have a lateral vectoring axis used for roll control
+    bool _has_lateral_vectoring = false;
 
 };
