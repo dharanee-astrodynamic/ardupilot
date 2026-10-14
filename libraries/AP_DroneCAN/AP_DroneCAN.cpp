@@ -1042,7 +1042,6 @@ void AP_DroneCAN::notify_state_send()
         msg.vehicle_state |= 1 << ARDUPILOT_INDICATION_NOTIFYSTATE_VEHICLE_STATE_THROW_READY;
     }
 
-#ifndef HAL_BUILD_AP_PERIPH
     const AP_Vehicle* vehicle = AP::vehicle();
     if (vehicle != nullptr) {
         if (vehicle->is_landing()) {
@@ -1052,7 +1051,6 @@ void AP_DroneCAN::notify_state_send()
             msg.vehicle_state |= 1 << ARDUPILOT_INDICATION_NOTIFYSTATE_VEHICLE_STATE_IS_TAKING_OFF;
         }
     }
-#endif // HAL_BUILD_AP_PERIPH
 
     // beware that
     // ARDUPILOT_INDICATION_NOTIFYSTATE_VEHICLE_YAW_EARTH_CENTIDEGREES
@@ -1976,7 +1974,7 @@ bool AP_DroneCAN::check_and_reset_option(Options option)
 {
     bool ret = option_is_set(option);
     if (ret) {
-        _options.set_and_save(int16_t(_options.get() & ~uint16_t(option)));
+        _options.set_and_save(_options & ~uint16_t(option));
     }
     return ret;
 }
