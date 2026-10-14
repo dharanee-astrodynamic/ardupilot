@@ -51,11 +51,7 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeft, CH_4);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeft, SERVO_OUTPUT_RANGE);
 
-    SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeftRoll, SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_angle(SRV_Channel::k_tiltMotorRightRoll, SERVO_OUTPUT_RANGE);
-    _has_lateral_tilt = SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeftRoll) || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRightRoll);
-
-    _mav_type = MAV_TYPE_VTOL_DUOROTOR;
+    _mav_type = MAV_TYPE_VTOL_TAILSITTER_DUOROTOR;
 
     // record successful initialisation if what we setup was the desired frame_class
     set_initialised_ok(frame_class == MOTOR_FRAME_TAILSITTER);
@@ -116,8 +112,6 @@ void AP_MotorsTailsitter::output_to_motors()
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftRoll, _tilt_roll*SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightRoll, _tilt_roll*SERVO_OUTPUT_RANGE);
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftLat, _tilt_lateral*SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightLat, _tilt_lateral*SERVO_OUTPUT_RANGE);
@@ -191,9 +185,8 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // calculate left and right throttle outputs
-    const float roll_diff_thrust = _has_lateral_tilt ? 0.0f : roll_thrust;
-    _thrust_left  = throttle_thrust + roll_diff_thrust * 0.5f;
-    _thrust_right = throttle_thrust - roll_diff_thrust * 0.5f;
+    _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
+    _thrust_right = throttle_thrust - roll_thrust * 0.5f;
 
     thrust_max = MAX(_thrust_right,_thrust_left);
     thrust_min = MIN(_thrust_right,_thrust_left);
@@ -233,7 +226,6 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     // thrust vectoring
     _tilt_left  = pitch_thrust - yaw_thrust;
     _tilt_right = pitch_thrust + yaw_thrust;
-    _tilt_roll = _has_lateral_tilt ? constrain_float(roll_thrust, -1.0f, 1.0f) : 0.0f;
 }
 
 // output_test_seq - spin a motor at the pwm value specified
