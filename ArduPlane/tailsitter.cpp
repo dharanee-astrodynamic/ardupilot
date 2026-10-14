@@ -427,10 +427,8 @@ void Tailsitter::output(void)
             }
             SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, tilt_left);
             SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, tilt_right);
-
-            // lateral nozzle axis is only used for VTOL roll control
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftLat, 0.0);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightLat, 0.0);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftRoll, 0.0);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightRoll, 0.0);
             return;
         }
     }
@@ -569,7 +567,8 @@ void Tailsitter::output(void)
     // Check for saturated limits
     bool tilt_lim = _is_vectored && ((fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorLeft)) >= SERVO_MAX) || (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorRight)) >= SERVO_MAX));
     bool roll_lim = _have_rudder && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_rudder)) >= SERVO_MAX);
-    roll_lim |= _is_vectored && ((fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorLeftLat)) >= SERVO_MAX) || (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorRightLat)) >= SERVO_MAX));
+    roll_lim |= (SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeftRoll) || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRightRoll)) &&
+                (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorLeftRoll)) >= SERVO_MAX);
     bool pitch_lim = _have_elevator && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_elevator)) >= SERVO_MAX);
     bool yaw_lim = _have_aileron && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_aileron)) >= SERVO_MAX);
 

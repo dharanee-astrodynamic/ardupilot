@@ -1,0 +1,34 @@
+# Raven: twin turbojet, vectored-nozzle tailsitter with two trailing-edge surfaces
+#
+# Maps the vehicle onto ArduPlane's duo-motor tailsitter (Q_FRAME_CLASS 10).
+# Mapping only: no gains are tuned, and nothing here has been flown or run in SITL.
+# Pitch/yaw come from the tilt servos (common/differential); roll comes from the
+# lateral servos (functions 190/191), a local addition to AP_MotorsTailsitter.
+# Servo reversal and trims must be set per airframe.
+# The nozzle on the aircraft's right side takes the Left functions (75, 73).
+
+Q_ENABLE         1
+Q_FRAME_CLASS    10
+Q_TAILSIT_ENABLE 1
+
+# engines
+SERVO1_FUNCTION  74
+SERVO2_FUNCTION  73
+
+# nozzle tilt servos, pitch/yaw axis
+SERVO3_FUNCTION  76
+SERVO4_FUNCTION  75
+
+# trailing-edge surfaces, mixed as elevons
+SERVO5_FUNCTION  77
+SERVO6_FUNCTION  78
+
+# nozzle lateral servos, roll axis
+SERVO7_FUNCTION  190
+SERVO8_FUNCTION  191
+
+# hover attitude from the nozzles only: full vectoring gain, no surface output
+Q_TAILSIT_VHGAIN 1
+Q_TAILSIT_VT_R_P 0
+Q_TAILSIT_VT_P_P 0
+Q_TAILSIT_VT_Y_P 0

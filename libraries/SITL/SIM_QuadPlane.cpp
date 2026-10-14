@@ -28,10 +28,20 @@ QuadPlane::QuadPlane(const char *frame_str) :
     // default to X frame
     const char *frame_type = "x";
     uint8_t motor_offset = 4;
+    float frame_mass_scale = 1.5;
 
     ground_behavior = GROUND_BEHAVIOR_NO_MOVEMENT;
 
-    if (strstr(frame_str, "-octa-quad-cor")) {
+    if (strstr(frame_str, "-raven")) {
+        frame_type = "raven";
+        // flaps are mixed as elevons
+        elevons = true;
+        copter_tailsitter = true;
+        ground_behavior = GROUND_BEHAVIOR_TAILSITTER;
+        // the engines give all the thrust
+        thrust_scale = 0;
+        frame_mass_scale = 1.0;
+    } else if (strstr(frame_str, "-octa-quad-cor")) {
         frame_type = "octa-quad-cor";
     } else if (strstr(frame_str, "-octa-quad-cw-cor")) {
         frame_type = "octa-quad-cw-cor";
@@ -101,7 +111,7 @@ QuadPlane::QuadPlane(const char *frame_str) :
     frame->motor_offset = motor_offset;
 
     // increase mass for plane components
-    frame->set_mass_scale(1.5);
+    frame->set_mass_scale(frame_mass_scale);
 
     frame->init(frame_str);
     battery.setup(frame->get_model_batt_capacity_ah(),

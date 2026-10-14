@@ -1,0 +1,75 @@
+# Raven SITL parameters, layered on quadplane.parm
+#
+# Servo layout is the SITL model's, not the hardware one in
+# Tools/Frame_params/QuadPlanes/Raven.param. Gains are first estimates
+# from the placeholder model in models/raven.json and need tuning.
+
+Q_ENABLE         1
+Q_FRAME_CLASS    10
+Q_TAILSIT_ENABLE 1
+
+# hover attitude from the nozzles only
+Q_TAILSIT_VHGAIN 1
+Q_TAILSIT_VT_R_P 0
+Q_TAILSIT_VT_P_P 0
+Q_TAILSIT_VT_Y_P 0
+
+# flaps, mixed as elevons
+SERVO1_FUNCTION  78
+SERVO2_FUNCTION  77
+SERVO1_REVERSED  1
+SERVO2_REVERSED  1
+SERVO3_FUNCTION  0
+SERVO4_FUNCTION  0
+
+# engines
+SERVO5_FUNCTION  73
+SERVO6_FUNCTION  74
+
+# nozzle pitch/yaw axis
+SERVO7_FUNCTION  75
+SERVO8_FUNCTION  76
+
+# nozzle roll axis
+SERVO9_FUNCTION  190
+SERVO10_FUNCTION 191
+
+SERVO5_MIN       1000
+SERVO5_MAX       2000
+SERVO6_MIN       1000
+SERVO6_MAX       2000
+SERVO7_MIN       1000
+SERVO7_MAX       2000
+SERVO8_MIN       1000
+SERVO8_MAX       2000
+SERVO9_MIN       1000
+SERVO9_MAX       2000
+SERVO10_MIN      1000
+SERVO10_MAX      2000
+
+# rate gains from the nozzle authority of the placeholder model
+Q_A_RAT_RLL_P    1.0
+Q_A_RAT_RLL_I    0.5
+Q_A_RAT_RLL_D    0.01
+Q_A_RAT_PIT_P    1.0
+Q_A_RAT_PIT_I    0.5
+Q_A_RAT_PIT_D    0.01
+Q_A_RAT_YAW_P    0.8
+Q_A_RAT_YAW_I    0.4
+Q_A_RAT_YAW_D    0
+
+# the control surface tailsitter defaults limit angular acceleration far too low
+Q_A_ACC_P_MAX    0
+Q_A_ACC_R_MAX    0
+
+# setup rangefinder for tailsitter
+SIM_SONAR_ROT    4
+SIM_SONAR_SCALE  10
+RNGFND1_TYPE     100
+RNGFND1_PIN      0
+RNGFND1_SCALING  10
+RNGFND1_MIN      0.10
+RNGFND1_MAX      50
+RNGFND1_ORIENT   12
+RNGFND_LANDING   1
+RNGFND_LND_ORNT  12

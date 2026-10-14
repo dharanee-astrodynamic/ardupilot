@@ -1,0 +1,73 @@
+# Raven SITL model: twin turbojet, 2-axis vectored-nozzle tailsitter
+#
+# Every number here is a placeholder, not Raven data. Replace mass, inertia,
+# nozzle positions, thrust and aero coefficients with measured values.
+#
+# Motor positions are in the hover (copter) frame: x forward, y right, z down.
+# Motor 1 is the engine assigned to the Left servo functions. It sits on the
+# +y side because the nozzles are below the centre of gravity, which is the
+# opposite of a nose-mounted tailsitter.
+
+{
+    # frame model, used for the two engines
+    "mass" : 10.0,
+    "diagonal_size" : 0.5,
+    "propExpo" : 0.65,
+    "hoverThrOut" : 0.5,
+    "spin_min" : 0.15,
+    "spin_max" : 0.95,
+    "slew_max" : 1.0,
+    "disc_area" : 0.05,
+    "num_motors" : 2,
+
+    # inertia about the hover frame x, y and z axes, z is the nose axis
+    "moment_inertia" : [2.4, 2.1, 0.8],
+
+    "motor1_position" : [0.0, 0.12, 0.5],
+    "motor2_position" : [0.0, -0.12, 0.5],
+
+    # aerodynamic coefficients, copied from the skywalker_2013 model
+    "s": 0.45,
+    "b": 1.88,
+    "c": 0.24,
+    "c_lift_0": 0.56,
+    "c_lift_deltae": 0,
+    "c_lift_a": 6.9,
+    "c_lift_q": 0,
+    "mcoeff": 50,
+    "oswald": 0.9,
+    "alpha_stall": 0.4712,
+    "c_drag_q": 0,
+    "c_drag_deltae": 0.0,
+    "c_drag_p": 0.1,
+    "c_y_0": 0,
+    "c_y_b": -0.98,
+    "c_y_p": 0,
+    "c_y_r": 0,
+    "c_y_deltaa": 0,
+    "c_y_deltar": -0.2,
+    "c_l_0": 0,
+    "c_l_p": -1.0,
+    "c_l_b": -0.12,
+    "c_l_r": 0.14,
+    "c_l_deltaa": 0.25,
+    "c_l_deltar": -0.037,
+    "c_m_0": 0.045,
+    "c_m_a": -0.7,
+    "c_m_q": -20,
+    "c_m_deltae": 1.0,
+    "c_n_0": 0,
+    "c_n_b": 0.25,
+    "c_n_p": 0.022,
+    "c_n_r": -1,
+    "c_n_deltaa": 0.00,
+    "c_n_deltar": 0.1,
+    "deltaa_max": 0.3491,
+    "deltae_max": 0.3491,
+    "deltar_max": 0.3491,
+    "CGOffset": [
+        -0.15,
+        0.0,
+        -0.05
+    ]
+}

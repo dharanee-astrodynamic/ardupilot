@@ -538,6 +538,14 @@
                     "default_params/quadplane-copter_tailsitter.parm"
                 ]
             },
+            "quadplane-raven": {
+                "model": "quadplane-raven:@ROMFS/models/raven.json",
+                "waf_target": "bin/arduplane",
+                "default_params_filename": [
+                    "default_params/quadplane.parm",
+                    "default_params/quadplane-raven.parm"
+                ]
+            },
             "plane": {
                 "waf_target": "bin/arduplane",
                 "default_params_filename": "models/plane.parm"

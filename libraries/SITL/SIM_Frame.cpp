@@ -553,6 +553,18 @@ static Motor firefly_motors[] =
     Motor(AP_MOTORS_MOT_6, -60, AP_MOTORS_MATRIX_YAW_FACTOR_CW,  6, -1, 0, 0, 6, 0, -90)
 };
 
+/*
+  Raven: two engines, each with a pitch and a roll nozzle servo. Servo
+  numbers are relative to the motor offset: engines 0 and 1, pitch
+  nozzles 2 and 3, roll nozzles 4 and 5. Positive command tilts the
+  thrust forward (pitch) and to the left (roll).
+ */
+static Motor raven_motors[] =
+{
+    Motor(AP_MOTORS_MOT_1,  90, AP_MOTORS_MATRIX_YAW_FACTOR_CW,  1, 4, 20, -20, 2, 20, -20),
+    Motor(AP_MOTORS_MOT_2, -90, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 2, 5, 20, -20, 3, 20, -20),
+};
+
 typedef struct {
     const char *name;
     uint8_t num_motors;
@@ -599,6 +611,7 @@ static const FrameTemplate supported_frame_templates[] =
     {"tilttri",   3, tilttri_motors},
     {"y6",        6, y6_motors},
     {"firefly",   6, firefly_motors},
+    {"raven",     2, raven_motors},
     {"tilt",      4, tiltquad},
 };
 
