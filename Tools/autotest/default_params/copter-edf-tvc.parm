@@ -1,0 +1,4 @@
+# single EDF with a 2-axis thrust vectoring nozzle
+# SERVO1 = nozzle roll axis, SERVO2 = nozzle pitch axis, SERVO5 = EDF ESC
+FRAME_CLASS 8
+FRAME_TYPE 22

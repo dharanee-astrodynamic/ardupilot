@@ -17219,6 +17219,55 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
                 current_ts = None
         self.progress(f"{max_errors=}")
 
+    def EDFThrustVectoring(self):
+        '''Take off, hold position and land a single EDF with a 2-axis thrust vectoring nozzle'''
+        self.customise_SITL_commandline(
+            [],
+            model="edf-tvc",
+            defaults_filepath=self.model_defaults_filepath("edf-tvc"),
+            wipe=True,
+        )
+        self.assert_parameter_value("FRAME_CLASS", 8)
+        self.assert_parameter_value("FRAME_TYPE", 22)
+
+        # only the nozzle servos on outputs 1 and 2 and the fan on output 5 are used
+        self.assert_parameter_value("SERVO1_FUNCTION", 33)
+        self.assert_parameter_value("SERVO2_FUNCTION", 34)
+        self.assert_parameter_value("SERVO3_FUNCTION", 0)
+        self.assert_parameter_value("SERVO4_FUNCTION", 0)
+        self.assert_parameter_value("SERVO5_FUNCTION", 37)
+        self.assert_parameter_value("SERVO6_FUNCTION", 0)
+
+        max_tilt = math.radians(20)
+
+        def verify_tilt(mav, m):
+            if m.get_type() != 'ATTITUDE':
+                return
+            if abs(m.roll) > max_tilt or abs(m.pitch) > max_tilt:
+                raise NotAchievedException("Excessive tilt roll=%f pitch=%f deg" %
+                                           (math.degrees(m.roll), math.degrees(m.pitch)))
+
+        self.context_push()
+        self.install_message_hook_context(verify_tilt)
+        self.takeoff(10, mode="GUIDED")
+        self.delay_sim_time(10, reason="hover on the nozzle alone")
+        self.wait_altitude(8, 12, relative=True)
+
+        self.set_rc(3, 1500)
+        self.change_mode("LOITER")
+        self.delay_sim_time(10, reason="hold position")
+        self.wait_altitude(8, 12, relative=True)
+
+        # the fan and the nozzle must be the only active outputs
+        servo = self.assert_receive_message('SERVO_OUTPUT_RAW')
+        for n in 3, 4, 6:
+            pwm = getattr(servo, "servo%u_raw" % n)
+            if pwm > 1100:
+                raise NotAchievedException("Unexpected output on servo %u (%u)" % (n, pwm))
+
+        self.do_RTL()
+        self.context_pop()
+
     def Callisto(self):
         '''Test Callisto'''
         self.customise_SITL_commandline(
@@ -17242,6 +17291,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             'heli-ddfptail': "wrong binary, different takeoff regime",
             'heli-quad': "wrong binary, different takeoff regime",
             "quad-can" : "needs CAN periph",
+            "edf-tvc": "no yaw control, see EDFThrustVectoring",
         }
         for frame in sorted(copter_vinfo_options["frames"].keys()):
             self.start_subtest("Testing frame (%s)" % str(frame))
@@ -19721,6 +19771,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.RTLYaw,
             self.DataFlash,
             self.Callisto,
+            self.EDFThrustVectoring,
             self.ModeAllowsEntryWhenNoPilotInput,
             self.WP_SPEED_UP,
             self.DO_WINCH,

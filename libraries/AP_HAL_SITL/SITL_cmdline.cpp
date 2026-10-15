@@ -164,6 +164,7 @@ static const struct {
     { "heli-blade360",         Helicopter::create },
     { "singlecopter",       SingleCopter::create },
     { "coaxcopter",         SingleCopter::create },
+    { "edf-tvc",            SingleCopter::create },
     { "rover",              SimRover::create },
     { "balancebot",         BalanceBot::create },
     { "sailboat",           Sailboat::create },

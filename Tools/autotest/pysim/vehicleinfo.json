@@ -261,6 +261,13 @@
                     "default_params/copter-coax.parm"
                 ]
             },
+            "edf-tvc": {
+                "waf_target": "bin/arducopter",
+                "default_params_filename": [
+                    "default_params/copter-single.parm",
+                    "default_params/copter-edf-tvc.parm"
+                ]
+            },
             "scrimmage-copter": {
                 "waf_target": "bin/arducopter",
                 "default_params_filename": "default_params/copter.parm",

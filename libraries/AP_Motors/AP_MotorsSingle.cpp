@@ -24,18 +24,31 @@ extern const AP_HAL::HAL& hal;
 // init
 void AP_MotorsSingle::init(motor_frame_class frame_class, motor_frame_type frame_type)
 {
-    // make sure 6 output channels are mapped
-    for (uint8_t i = 0; i < 6; i++) {
-        add_motor_num(CH_1 + i);
-    }
+    _tvc = (frame_type == MOTOR_FRAME_TYPE_TVC);
 
-    // set the motor_enabled flag so that the main ESC can be calibrated like other frame types
-    motor_enabled[AP_MOTORS_MOT_5] = true;
-    motor_enabled[AP_MOTORS_MOT_6] = true;
+    if (_tvc) {
+        // nozzle roll servo on output 1, nozzle pitch servo on output 2, fan ESC on output 5
+        add_motor_num(CH_1);
+        add_motor_num(CH_2);
+        add_motor_num(CH_5);
+        motor_enabled[AP_MOTORS_MOT_5] = true;
+        for (uint8_t i = 0; i < 2; i++) {
+            SRV_Channels::set_angle(SRV_Channels::get_motor_function(i), AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
+        }
+    } else {
+        // make sure 6 output channels are mapped
+        for (uint8_t i = 0; i < 6; i++) {
+            add_motor_num(CH_1 + i);
+        }
 
-    // setup actuator scaling
-    for (uint8_t i = 0; i < NUM_ACTUATORS; i++) {
-        SRV_Channels::set_angle(SRV_Channels::get_motor_function(i), AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
+        // set the motor_enabled flag so that the main ESC can be calibrated like other frame types
+        motor_enabled[AP_MOTORS_MOT_5] = true;
+        motor_enabled[AP_MOTORS_MOT_6] = true;
+
+        // setup actuator scaling
+        for (uint8_t i = 0; i < NUM_ACTUATORS; i++) {
+            SRV_Channels::set_angle(SRV_Channels::get_motor_function(i), AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
+        }
     }
 
     _mav_type = MAV_TYPE_COAXIAL;
@@ -56,9 +69,10 @@ void AP_MotorsSingle::set_update_rate(uint16_t speed_hz)
     // record requested speed
     _speed_hz = speed_hz;
 
-    uint32_t mask =
-        1U << AP_MOTORS_MOT_5 |
-        1U << AP_MOTORS_MOT_6 ;
+    uint32_t mask = 1U << AP_MOTORS_MOT_5;
+    if (!_tvc) {
+        mask |= 1U << AP_MOTORS_MOT_6;
+    }
     rc_set_freq(mask, _speed_hz);
 }
 
@@ -67,37 +81,47 @@ void AP_MotorsSingle::output_to_motors()
     if (!initialised_ok()) {
         return;
     }
+    // the thrust vectoring nozzle only has roll and pitch servos, and a single fan
+    const uint8_t num_servos = _tvc ? 2 : NUM_ACTUATORS;
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN:
             // sends minimum values out to the motors
             rc_write_angle(AP_MOTORS_MOT_1, _roll_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
             rc_write_angle(AP_MOTORS_MOT_2, _pitch_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
-            rc_write_angle(AP_MOTORS_MOT_3, -_roll_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
-            rc_write_angle(AP_MOTORS_MOT_4, -_pitch_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
+            if (!_tvc) {
+                rc_write_angle(AP_MOTORS_MOT_3, -_roll_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
+                rc_write_angle(AP_MOTORS_MOT_4, -_pitch_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
+            }
             rc_write(AP_MOTORS_MOT_5, output_to_pwm(0));
-            rc_write(AP_MOTORS_MOT_6, output_to_pwm(0));
+            if (!_tvc) {
+                rc_write(AP_MOTORS_MOT_6, output_to_pwm(0));
+            }
             break;
         case SpoolState::GROUND_IDLE:
             // sends output to motors when armed but not flying
-            for (uint8_t i = 0; i < NUM_ACTUATORS; i++) {
+            for (uint8_t i = 0; i < num_servos; i++) {
                 rc_write_angle(AP_MOTORS_MOT_1 + i, _spin_up_ratio * _actuator_out[i] * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
             }
             set_actuator_with_slew(_actuator[AP_MOTORS_MOT_5], actuator_spin_up_to_ground_idle());
             set_actuator_with_slew(_actuator[AP_MOTORS_MOT_6], actuator_spin_up_to_ground_idle());
             rc_write(AP_MOTORS_MOT_5, output_to_pwm(_actuator[AP_MOTORS_MOT_5]));
-            rc_write(AP_MOTORS_MOT_6, output_to_pwm(_actuator[AP_MOTORS_MOT_6]));
+            if (!_tvc) {
+                rc_write(AP_MOTORS_MOT_6, output_to_pwm(_actuator[AP_MOTORS_MOT_6]));
+            }
             break;
         case SpoolState::SPOOLING_UP:
         case SpoolState::THROTTLE_UNLIMITED:
         case SpoolState::SPOOLING_DOWN:
             // set motor output based on thrust requests
-            for (uint8_t i = 0; i < NUM_ACTUATORS; i++) {
+            for (uint8_t i = 0; i < num_servos; i++) {
                 rc_write_angle(AP_MOTORS_MOT_1 + i, _actuator_out[i] * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
             }
             set_actuator_with_slew(_actuator[AP_MOTORS_MOT_5], thr_lin.thrust_to_actuator(_thrust_out));
             set_actuator_with_slew(_actuator[AP_MOTORS_MOT_6], thr_lin.thrust_to_actuator(_thrust_out));
             rc_write(AP_MOTORS_MOT_5, output_to_pwm(_actuator[AP_MOTORS_MOT_5]));
-            rc_write(AP_MOTORS_MOT_6, output_to_pwm(_actuator[AP_MOTORS_MOT_6]));
+            if (!_tvc) {
+                rc_write(AP_MOTORS_MOT_6, output_to_pwm(_actuator[AP_MOTORS_MOT_6]));
+            }
             break;
     }
 }
@@ -106,9 +130,10 @@ void AP_MotorsSingle::output_to_motors()
 //  this can be used to ensure other pwm outputs (i.e. for servos) do not conflict
 uint32_t AP_MotorsSingle::get_motor_mask()
 {
-    uint32_t motor_mask =
-        1U << AP_MOTORS_MOT_5 |
-        1U << AP_MOTORS_MOT_6;
+    uint32_t motor_mask = 1U << AP_MOTORS_MOT_5;
+    if (!_tvc) {
+        motor_mask |= 1U << AP_MOTORS_MOT_6;
+    }
 
     uint32_t mask = motor_mask_to_srv_channel_mask(motor_mask);
 
@@ -138,6 +163,11 @@ void AP_MotorsSingle::output_armed_stabilizing()
     roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
     pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain;
     yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;
+    if (_tvc) {
+        // a 2-axis nozzle can't produce yaw torque, flag yaw as limited so the yaw controller does not wind up
+        yaw_thrust = 0.0f;
+        limit.yaw = true;
+    }
     throttle_thrust = get_throttle() * compensation_gain;
     throttle_avg_max = _throttle_avg_max * compensation_gain;
 
@@ -245,11 +275,15 @@ void AP_MotorsSingle::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             break;
         case 3:
             // flap servo 3
-            rc_write(AP_MOTORS_MOT_3, pwm);
+            if (!_tvc) {
+                rc_write(AP_MOTORS_MOT_3, pwm);
+            }
             break;
         case 4:
             // flap servo 4
-            rc_write(AP_MOTORS_MOT_4, pwm);
+            if (!_tvc) {
+                rc_write(AP_MOTORS_MOT_4, pwm);
+            }
             break;
         case 5:
             // spin motor 1
@@ -257,7 +291,9 @@ void AP_MotorsSingle::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             break;
         case 6:
             // spin motor 2
-            rc_write(AP_MOTORS_MOT_6, pwm);
+            if (!_tvc) {
+                rc_write(AP_MOTORS_MOT_6, pwm);
+            }
             break;
         default:
             // do nothing

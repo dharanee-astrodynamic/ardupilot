@@ -29,6 +29,8 @@ SingleCopter::SingleCopter(const char *frame_str) :
 
     if (strstr(frame_str, "coax")) {
         frame_type = FRAME_COAX;
+    } else if (strstr(frame_str, "tvc")) {
+        frame_type = FRAME_TVC;
     } else {
         frame_type = FRAME_SINGLE;
     }
@@ -65,6 +67,15 @@ void SingleCopter::update(const struct sitl_input &input)
         yaw_thrust   = -(actuator[0] + actuator[1] + actuator[2] + actuator[3]) * 0.25f * thrust + thrust * rotor_rot_accel;
         roll_thrust  = (actuator[0] - actuator[2]) * 0.5f * thrust;
         pitch_thrust = (actuator[1] - actuator[3]) * 0.5f * thrust;
+        break;
+
+    case FRAME_TVC:
+        // nozzle roll and pitch servos tilt the thrust vector. Nothing can
+        // counter the fan reaction torque, so yaw is passive
+        thrust = constrain_float((input.servos[4]-1000) / 1000.0f, 0, 1);
+        yaw_thrust   = thrust * rotor_rot_accel * 0.1f;
+        roll_thrust  = actuator[0] * thrust;
+        pitch_thrust = actuator[1] * thrust;
         break;
 
     case FRAME_COAX:
