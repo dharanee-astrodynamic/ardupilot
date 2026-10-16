@@ -51,6 +51,7 @@ private:
     enum {
         FRAME_SINGLE,
         FRAME_COAX,
+        FRAME_TVC,
     } frame_type;
 };
 

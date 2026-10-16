@@ -1,0 +1,20 @@
+# Battery settings for the Pixhawk 2.4.8 single fan thrust vectoring vehicle, 4S, 3DR style power module.
+# Load this AFTER edf_tvc_pixhawk.param, AFTER the board has rebooted with BATT_MONITOR 4,
+# and AFTER the ground station has re-read the parameters from the board (Mission Planner: Refresh Params, or disconnect and
+# reconnect). These parameters do not exist on the board while BATT_MONITOR is 0, and a ground station that still holds
+# the old list reports them as missing ("No matching Params").
+#
+# These include the low-battery failsafe actions: without them a low battery does nothing.
+#
+# They also block arming ("Arm: Battery 1 critical voltage failsafe") whenever the measured voltage is above 0 V but below
+# BATT_CRT_VOLT. Check the voltage the ground station shows against a meter before relying on them.
+
+# power module scales: calibrate against a meter
+BATT_VOLT_MULT    10.1
+BATT_AMP_PERVLT   17.0
+
+# 4S: 3.5 V and 3.3 V per cell, then land
+BATT_LOW_VOLT     14.0
+BATT_CRT_VOLT     13.2
+BATT_FS_LOW_ACT   1
+BATT_FS_CRT_ACT   1

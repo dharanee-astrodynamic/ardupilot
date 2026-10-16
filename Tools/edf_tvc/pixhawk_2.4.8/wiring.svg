@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" font-family="DejaVu Sans, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#333"/></marker>
+    <style>
+      .box{fill:#eef3f8;stroke:#34495e;stroke-width:2}
+      .fc{fill:#fdf2d8;stroke:#8a6d1d;stroke-width:3}
+      .esc{fill:#e8f1e8;stroke:#2e6b3a;stroke-width:2}
+      .warn{fill:#fde8e8;stroke:#b03030;stroke-width:2}
+      .pad{fill:#fff;stroke:#333;stroke-width:1.5}
+      .padu{fill:#f4f4f4;stroke:#aaa;stroke-width:1.5}
+      .h{font-size:16px;font-weight:bold;fill:#111}
+      .t{font-size:14px;fill:#111}
+      .s{font-size:12.5px;fill:#444}
+      .p{font-size:11.5px;fill:#111;text-anchor:middle}
+      .w{stroke-width:3;fill:none}
+    </style>
+  </defs>
+  <text x="600" y="30" text-anchor="middle" class="h" style="font-size:22px">Pixhawk 2.4.8: single fan with a thrust vectoring nozzle</text>
+  <text x="600" y="50" text-anchor="middle" class="s">Logical layout, not to scale. Take the pin order from the markings on your board.</text>
+
+  <!-- FC -->
+  <rect x="440" y="230" width="330" height="200" rx="12" class="fc"/>
+  <text x="605" y="300" text-anchor="middle" class="h" style="font-size:20px">Pixhawk 2.4.8</text>
+  <text x="605" y="324" text-anchor="middle" class="s">ArduCopter, FRAME_CLASS 8, FRAME_TYPE 22</text>
+  <text x="605" y="346" text-anchor="middle" class="s">MAIN OUT (IO processor), PWM only</text>
+  <text x="605" y="366" text-anchor="middle" class="s">outputs 1 and 2: nozzle, output 5: fan</text>
+
+  <!-- MAIN OUT pads -->
+  <rect x="470" y="196" width="34" height="22" class="pad"/><text x="487" y="211" class="p">1</text>
+  <rect x="510" y="196" width="34" height="22" class="pad"/><text x="527" y="211" class="p">2</text>
+  <rect x="550" y="196" width="34" height="22" class="padu"/><text x="567" y="211" class="p">3</text>
+  <rect x="590" y="196" width="34" height="22" class="padu"/><text x="607" y="211" class="p">4</text>
+  <rect x="630" y="196" width="34" height="22" class="pad"/><text x="647" y="211" class="p">5</text>
+  <rect x="670" y="196" width="34" height="22" class="padu"/><text x="687" y="211" class="p">6</text>
+  <rect x="710" y="196" width="34" height="22" class="padu"/><text x="727" y="211" class="p">7</text>
+  <rect x="750" y="196" width="34" height="22" class="padu"/><text x="767" y="211" class="p">8</text>
+  <text x="627" y="187" text-anchor="middle" class="s">MAIN OUT signal pins (unused outputs left empty)</text>
+
+  <!-- Servos -->
+  <rect x="60" y="90" width="260" height="110" rx="8" class="box"/>
+  <text x="190" y="115" text-anchor="middle" class="h">Nozzle servos</text>
+  <text x="190" y="138" text-anchor="middle" class="s">roll servo: signal from output 1</text>
+  <text x="190" y="158" text-anchor="middle" class="s">pitch servo: signal from output 2</text>
+  <text x="190" y="180" text-anchor="middle" class="s">V+ and GND from the servo rail</text>
+  <path d="M487,196 L487,150 L320,150" class="w" stroke="#d4ac0d" marker-end="url(#a)"/>
+  <path d="M527,196 L527,128 L320,128" class="w" stroke="#d4ac0d" marker-end="url(#a)"/>
+
+  <!-- ESC -->
+  <rect x="860" y="90" width="280" height="130" rx="8" class="esc"/>
+  <text x="1000" y="115" text-anchor="middle" class="h">Fan ESC (PWM)</text>
+  <text x="1000" y="138" text-anchor="middle" class="s">signal from output 5, ground common</text>
+  <text x="1000" y="158" text-anchor="middle" class="s">accepts 400 Hz PWM, calibrated</text>
+  <text x="1000" y="180" text-anchor="middle" class="s">battery in, three motor wires out</text>
+  <text x="1000" y="200" text-anchor="middle" class="s">BEC: see Servo rail power</text>
+  <path d="M647,196 L647,100 L860,100" class="w" stroke="#2874a6" marker-end="url(#a)"/>
+  <rect x="940" y="270" width="120" height="60" rx="8" class="warn"/>
+  <text x="1000" y="306" text-anchor="middle" class="h">Fan motor</text>
+  <path d="M1000,220 L1000,270" class="w" stroke="#555" marker-end="url(#a)"/>
+
+  <!-- Battery and power module -->
+  <rect x="60" y="480" width="170" height="80" rx="8" class="box"/>
+  <text x="145" y="510" text-anchor="middle" class="h">4S LiPo</text>
+  <text x="145" y="532" text-anchor="middle" class="s">through a fuse</text>
+  <rect x="290" y="470" width="220" height="100" rx="8" class="box"/>
+  <text x="400" y="498" text-anchor="middle" class="h">Power module</text>
+  <text x="400" y="522" text-anchor="middle" class="s">cable to the POWER port,</text>
+  <text x="400" y="542" text-anchor="middle" class="s">output connector feeds the ESC</text>
+  <path d="M230,520 L290,520" class="w" stroke="#c0392b" marker-end="url(#a)"/>
+  <path d="M510,520 L560,520 L560,430" class="w" stroke="#c0392b" marker-end="url(#a)"/>
+  <text x="640" y="500" text-anchor="middle" class="s">POWER cable</text>
+  <path d="M400,570 L400,660 L1170,660 L1170,170 L1140,170" class="w" stroke="#c0392b" stroke-dasharray="8,6" marker-end="url(#a)"/>
+  <text x="780" y="652" text-anchor="middle" class="s">module output to the ESC input, so the current is measured (module rating must cover the fan)</text>
+
+  <!-- Receiver / GPS / compass / safety -->
+  <rect x="860" y="400" width="280" height="64" rx="8" class="box"/>
+  <text x="1000" y="426" text-anchor="middle" class="h">RC receiver</text>
+  <text x="1000" y="448" text-anchor="middle" class="s">RC / PPM input pin (all protocols)</text>
+  <path d="M770,330 L860,425" class="w" stroke="#1e8449"/>
+  <rect x="860" y="480" width="280" height="64" rx="8" class="box"/>
+  <text x="1000" y="506" text-anchor="middle" class="h">GPS + external compass</text>
+  <text x="1000" y="528" text-anchor="middle" class="s">GPS port (SERIAL3) and the I2C port</text>
+  <path d="M770,380 L860,510" class="w" stroke="#1e8449"/>
+  <rect x="860" y="560" width="280" height="64" rx="8" class="box"/>
+  <text x="1000" y="586" text-anchor="middle" class="h">Safety switch and buzzer</text>
+  <text x="1000" y="608" text-anchor="middle" class="s">SWITCH and buzzer ports</text>
+  <path d="M770,410 L860,590" class="w" stroke="#1e8449"/>
+
+  <!-- servo rail -->
+  <rect x="60" y="250" width="290" height="110" rx="8" class="warn"/>
+  <text x="205" y="276" text-anchor="middle" class="h">Servo rail power</text>
+  <text x="205" y="298" text-anchor="middle" class="s">The board does not power the rail.</text>
+  <text x="205" y="316" text-anchor="middle" class="s">Feed the + and - of the MAIN OUT rail</text>
+  <text x="205" y="334" text-anchor="middle" class="s">from the ESC BEC or a separate BEC,</text>
+  <text x="205" y="352" text-anchor="middle" class="s">never from both, within the rail rating.</text>
+  <path d="M350,305 L440,305" class="w" stroke="#c0392b" marker-end="url(#a)"/>
+
+  <rect x="60" y="385" width="260" height="70" rx="8" class="box"/>
+  <text x="190" y="411" text-anchor="middle" class="h">TFMini Plus lidar</text>
+  <text x="190" y="431" text-anchor="middle" class="s">SERIAL 4/5 port, the #4 pins</text>
+  <text x="190" y="447" text-anchor="middle" class="s">looks down, the only height source</text>
+  <path d="M320,420 L440,420" class="w" stroke="#1e8449" marker-end="url(#a)"/>
+  <text x="30" y="705" class="s">Fan signal: output 5. Nozzle: outputs 1 (roll) and 2 (pitch). Outputs 3, 4, 6, 7, 8 stay empty. Outputs 1-2, 3-4 and 5-8 are the IO groups.</text>
+</svg>

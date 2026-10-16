@@ -126,6 +126,7 @@ public:
         MOTOR_FRAME_TYPE_Y4 = 19, //Y4 Quadrotor frame
         MOTOR_FRAME_TYPE_X_COR = 20, // X8 co-rotating, old motor ordering
         MOTOR_FRAME_TYPE_CW_X_COR = 21, // X8 co-rotating, clockwise motor ordering
+        MOTOR_FRAME_TYPE_TVC = 22, // Single frame class only: one fan, 2-axis thrust vectoring nozzle
     };
 
 

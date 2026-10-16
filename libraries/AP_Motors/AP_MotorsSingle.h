@@ -51,6 +51,11 @@ protected:
     void                output_armed_stabilizing() override;
 
     const char* _get_frame_string() const override { return "SINGLE"; }
+    const char* get_type_string() const override { return _tvc ? "TVC" : ""; }
+
+    // thrust vectoring variant: servos on outputs 1 and 2 tilt the nozzle, the fan is output 5
+    void                output_to_motors_tvc();
+    void                output_armed_stabilizing_tvc();
 
     // output_test_seq - spin a motor at the pwm value specified
     //  motor_seq is the motor's sequence number from 1 to the number of motors on the frame
@@ -60,4 +65,5 @@ protected:
     int16_t             _throttle_radio_output;   // total throttle pwm value, summed onto throttle channel minimum, typically ~1100-1900
     float               _actuator_out[NUM_ACTUATORS]; // combined roll, pitch, yaw and throttle outputs to motors in 0~1 range
     float               _thrust_out;
+    bool                _tvc;                     // true for FRAME_TYPE TVC
 };

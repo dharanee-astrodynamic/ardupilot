@@ -1,0 +1,84 @@
+# Single fan with a 2-axis thrust vectoring nozzle on a Pixhawk 2.4.8 (Pixhawk1 / FMUv3 layout)
+# Starting values for the first bench tests. None of this has been flown. Read README.md first.
+#
+# Outputs (MAIN, through the IO processor, PWM only):
+#   MAIN1 (SERVO1)  nozzle roll servo,  function Motor1 (33), the default
+#   MAIN2 (SERVO2)  nozzle pitch servo, function Motor2 (34), the default
+#   MAIN5 (SERVO5)  fan ESC, function Motor5 (37), the default
+# The IO groups are MAIN1-2, MAIN3-4 and MAIN5-8, so the 400 Hz fan output does not change the servo rate.
+
+FRAME_CLASS       8
+FRAME_TYPE        22
+
+# Nozzle travel. Set the pulse limits at the mechanical stops, then the trims for a centred nozzle.
+SERVO1_MIN        1100
+SERVO1_MAX        1900
+SERVO1_TRIM       1500
+SERVO1_REVERSED   0
+SERVO2_MIN        1100
+SERVO2_MAX        1900
+SERVO2_TRIM       1500
+SERVO2_REVERSED   0
+
+# PWM ESC. The fan output runs at the loop rate (400 Hz), so the ESC must accept it.
+MOT_PWM_TYPE      0
+MOT_PWM_MIN       1000
+MOT_PWM_MAX       2000
+
+# Fan thrust curve and idle: replace with values measured on a thrust stand.
+MOT_THST_EXPO     0.5
+MOT_THST_HOVER    0.35
+MOT_HOVER_LEARN   0
+MOT_SPIN_ARM      0.06
+MOT_SPIN_MIN      0.10
+MOT_SPIN_MAX      0.95
+# 4S
+MOT_BAT_VOLT_MAX  16.8
+MOT_BAT_VOLT_MIN  13.2
+
+# the nozzle is the only attitude actuator, so keep the lean angle small at first
+ATC_ANGLE_MAX     15
+
+# Rate loop. Too LOW a gain oscillates (the vehicle probably is not self-stabilising). In the Gazebo model
+# (instant servos, no vibration) 0.10 oscillated at +/-25 deg, 0.135 (the ArduCopter default) and 0.20 held, and 0.40 and
+# 0.80 flipped on aggressive moves. 0.20 is the middle of that window. Real servos lag, so tune on the tether: if it
+# oscillates at a high rate, reduce the gain; if it drifts away slowly, raise it.
+ATC_RAT_RLL_P     0.20
+ATC_RAT_RLL_I     0.20
+ATC_RAT_RLL_D     0.005
+ATC_RAT_PIT_P     0.20
+ATC_RAT_PIT_I     0.20
+ATC_RAT_PIT_D     0.005
+
+# Altitude: 0.5 m for now. A throttle take-off climbs to this height. The climb rate is limited to 0.5 m/s so a climb cannot run
+# far past it, and the ceiling below lands the vehicle if it is crossed anyway.
+# THE CEILING NEEDS A HOME POSITION (normally a GPS fix). Without one ArduPilot counts "cannot get the altitude" as a breach, so the
+# vehicle would be told to land. If you fly WITHOUT A GPS, set FENCE_ENABLE to 0.
+PILOT_TKO_ALT_M   0.5
+PILOT_SPD_UP      0.5
+WP_SPD_UP         0.5
+FENCE_ENABLE      1
+# 1 = maximum altitude only. No circle or polygon, so no GPS position is needed for the fence
+FENCE_TYPE        1
+FENCE_ALT_MAX     0.8
+# 2 = always land
+FENCE_ACTION      2
+
+# Benewake TFMini Plus lidar, UART, on the SERIAL 4/5 port (SERIAL4). This only switches the rangefinder on. Its other settings
+# (RNGFND1_MIN, MAX, GNDCLR, ORIENT, POS_X/Y/Z) do not exist on the board until RNGFND1_TYPE is non-zero and the ground station has
+# re-read the parameters, so they are in edf_tvc_pixhawk_lidar.param, loaded after that.
+# The height source stays the barometer until that file is loaded: it switches the EKF to the lidar last.
+SERIAL4_PROTOCOL  9
+SERIAL4_BAUD      115
+RNGFND1_TYPE      20
+
+# Power module: analog voltage and current. This only switches the monitor on. The rest of the battery settings
+# (BATT_VOLT_MULT, BATT_AMP_PERVLT, BATT_LOW_VOLT, BATT_CRT_VOLT, BATT_FS_LOW_ACT, BATT_FS_CRT_ACT) do not exist on the board
+# until BATT_MONITOR is 4 and the board has rebooted, so they are in edf_tvc_pixhawk_battery.param, loaded after that.
+BATT_MONITOR      4
+
+# failsafe: land on loss of radio (the battery failsafes are in edf_tvc_pixhawk_battery.param)
+FS_THR_ENABLE     3
+
+# RC7 high = motor emergency stop (stops the fan). Use a guarded switch.
+RC7_OPTION        31

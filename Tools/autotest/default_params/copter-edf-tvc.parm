@@ -1,0 +1,3 @@
+# single fan with a 2-axis thrust vectoring nozzle (SERVO1 roll, SERVO2 pitch, SERVO5 fan)
+FRAME_CLASS 8
+FRAME_TYPE 22

@@ -1,0 +1,21 @@
+# NO GPS: single fan thrust vectoring vehicle on a Pixhawk 2.4.8, for a test that takes off, holds a height from the lidar and lands.
+# Load this AFTER edf_tvc_pixhawk.param, edf_tvc_pixhawk_battery.param and edf_tvc_pixhawk_lidar.param, then reboot.
+#
+# What works without a GPS: Stabilize, AltHold (height from the lidar), Land. What does NOT work: Guided, Loiter, Auto, RTL, anything that
+# needs a position. Take-off is by a MAVLink take-off command in AltHold, or by the throttle stick: see DEPLOY_AND_WIRING.md, section 7b.
+
+# no GPS fitted
+GPS1_TYPE         0
+
+# The EKF has no horizontal position or velocity source. Without these the EKF waits for a GPS that is not there.
+EK3_SRC1_POSXY    0
+EK3_SRC1_VELXY    0
+EK3_SRC1_VELZ     0
+
+# Time on the ground, armed, before the vehicle disarms itself. The default is 10 s, which is short for arming, centring the throttle and sending the
+# take-off command by hand.
+DISARM_DELAY      30
+
+# The altitude fence is measured above home, and a home position needs a GPS. When ArduPilot cannot get the altitude it counts that as a breach,
+# so the fence would tell the vehicle to land.
+FENCE_ENABLE      0

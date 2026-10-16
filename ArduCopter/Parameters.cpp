@@ -230,8 +230,8 @@ const AP_Param::Info Copter::var_info[] = {
 
     // @Param: FRAME_TYPE
     // @DisplayName: Frame Type (+, X, V, etc)
-    // @Description: Controls motor mixing for multicopters.  Not used for Tri or Traditional Helicopters.
-    // @Values: 0:Plus, 1:X, 2:V, 3:H, 4:V-Tail, 5:A-Tail, 10:Y6B, 11:Y6F, 12:BetaFlightX, 13:DJIX, 14:ClockwiseX, 15: I, 18: BetaFlightXReversed, 19:Y4
+    // @Description: Controls motor mixing for multicopters.  Not used for Tri or Traditional Helicopters. 22 is only for FRAME_CLASS 8 (Single): one fan with a 2-axis thrust vectoring nozzle on outputs 1 (roll) and 2 (pitch) and the fan on output 5, with no yaw control.
+    // @Values: 0:Plus, 1:X, 2:V, 3:H, 4:V-Tail, 5:A-Tail, 10:Y6B, 11:Y6F, 12:BetaFlightX, 13:DJIX, 14:ClockwiseX, 15: I, 18: BetaFlightXReversed, 19:Y4, 22:SingleTVC
     // @User: Standard
     // @RebootRequired: True
     GSCALAR(frame_type, "FRAME_TYPE", HAL_FRAME_TYPE_DEFAULT),
