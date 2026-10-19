@@ -139,16 +139,20 @@ Tools/autotest/sim_vehicle.py -v ArduCopter --model edf-tvc --console --map
 
 ### Servo and nozzle check (fan or ESC unpowered)
 
-1. Set the outputs above, write params, reboot, and press the safety switch.
+1. Set the outputs above, write params, and reboot. Release the safety switch
+   if one is fitted. By default the nozzle servos (outputs 1 and 2) work with
+   safety active, but the fan (output 5) is held off until it is released.
 2. In Stabilize, disarmed, the stick roll and pitch are passed straight to
    servos 1 and 2. Move the sticks and confirm smooth, unbound nozzle motion.
    Watch `ch1out` and `ch2out` on the Status or Servo/Relay tab.
 3. Set `SERVOx_MIN`, `SERVOx_MAX` and `SERVOx_TRIM` so trim points the thrust
    straight down and the nozzle does not hit its stops. Use `SERVOx_REVERSED`
    for wrong directions.
-4. Arm in Stabilize (fan unpowered) and tilt the airframe by hand. The nozzle
-   must deflect to push it back to level. Roll must move servo 1 and pitch
-   servo 2. If wrong, reverse the servo or rewire.
+4. Arm in Stabilize (fan unpowered) and tilt the airframe by hand by 10 to 20
+   degrees. The nozzle must deflect to push it back to level. At zero throttle
+   the response is reduced (ground idle); raise throttle slightly for full
+   authority. Roll must move servo 1 and pitch servo 2. If wrong, reverse the
+   servo or rewire.
 5. Do not use Motor Test for the nozzle servos. It drives them as motors.
 
 ### Fan check
@@ -270,6 +274,83 @@ the sticks.
 - Keep clear of the airframe. Expect an uncontrolled fall once the fan stops.
 
 ## Troubleshooting
+
+### Nozzle does not follow attitude when armed
+
+Armed at zero throttle, the vehicle is in ground idle. In that state the nozzle
+command is scaled by the spin-up ratio, `MOT_SPIN_ARM / MOT_SPIN_MIN`
+(0.10 / 0.15, about 0.67 by default), and the attitude controller is held reset
+(`ArduCopter/mode_stabilize.cpp`, `AP_MotorsSingle::output_to_motors_tvc()`).
+The nozzle only gets full authority once throttle is raised above zero and the
+motors spool to `THROTTLE_UNLIMITED` (`MOT_SPOOL_TIME`, 0.5 s by default).
+
+1. **Tilt the airframe.** A level vehicle gives zero attitude error, so the nozzle
+   stays centred. Tilt it by 10 to 20 degrees and watch `ch1out` and `ch2out`.
+2. **Check `MOT_SPIN_ARM`.** If it is `0`, the ground-idle nozzle output is
+   scaled to zero and does not move. Set it to the default `0.10` or higher.
+3. **Raise throttle slightly** above zero (with the fan unpowered or blocked).
+   The state changes to `THROTTLE_UNLIMITED` and the nozzle responds with full
+   authority.
+4. **Check the rate gains.** `ATC_RAT_RLL_P`, `ATC_RAT_PIT_P` and the matching I
+   and D gains must not be zero. Compare the `ATT` log message (desired and
+   actual roll and pitch) with `RCOU` (nozzle output).
+5. **Check the direction and orientation.** A wrong `AHRS_ORIENTATION` or
+   reversed servo can look like "no response" or an opposing response.
+6. **Check `ARMING` and failsafe messages.** Arm in Stabilize with no failsafe.
+
+### Servos move when armed but do not follow attitude
+
+Seen on the bench: the `ch1out` and `ch2out` values in Mission Planner change
+when armed, but the physical servos do not move as expected.
+
+- The nozzle command is proportional to the tilt error, so small tilts give a
+  small PWM change that a servo deadband can hide. Tilt the airframe 20 to 30
+  degrees and compare the `ch1out` change with the full-stick change when
+  disarmed (about 500 us).
+- Check the HUD reads level when the airframe is level. A wrong
+  `AHRS_ORIENTATION` makes the servos sit at an extreme.
+- To test the IO board outputs, move the servos to AUX 1 and AUX 2, set
+  `SERVO1_FUNCTION 0` and `SERVO2_FUNCTION 0`, then `SERVO9_FUNCTION 33` and
+  `SERVO10_FUNCTION 34`.
+
+### Servo stays deflected after tilting and levelling back
+
+- On the bench the nozzle cannot correct the tilt, so the error persists and the
+  rate-controller integrator (I term) winds up. It unwinds slowly after the
+  airframe is levelled. This is expected without thrust.
+- Lower the throttle to zero. In ground idle the I terms are reset smoothly
+  (`ArduCopter/mode_stabilize.cpp`), which releases the nozzle. Disarming also
+  resets them.
+- To confirm, set `ATC_RAT_RLL_I` and `ATC_RAT_PIT_I` to `0` for the bench test.
+  The servo should then return to centre when level. Restore the values before
+  flight.
+- If it still stays off-centre, check that the HUD returns to level, that
+  `SERVOx_TRIM` centres the nozzle, and that the linkage is not binding.
+
+### Servos do not move with the RC connected
+
+Disarmed, the roll and pitch sticks drive the nozzle servos directly
+(`Copter::radio_passthrough_to_motors()` in `ArduCopter/radio.cpp`). Check in
+this order:
+
+1. **RC input is seen.** Setup, Mandatory Hardware, Radio Calibration: the bars
+   must move with the sticks. If not, fix the receiver, wiring, bind and the
+   protocol first.
+2. **Frame is set.** The passthrough only runs when the motor library
+   initialised for `FRAME_CLASS 8`. If `FRAME_CLASS` is not `8` or `FRAME_TYPE`
+   is not `22`, set them and reboot.
+3. **Outputs are assigned.** `SERVO1_FUNCTION 33` and `SERVO2_FUNCTION 34`, then
+   reboot. Check Status for `ch1out` and `ch2out` changing with the sticks.
+4. **Servo power.** The MAIN OUT rail needs its own 5 V supply. If `ch1out` and
+   `ch2out` change but the servos do not move, the rail is unpowered or the
+   wiring is wrong (signal on the top pin, V+ in the middle, GND outer).
+5. **Safety switch and mask.** `BRD_SAFETY_MASK` lets outputs move with safety
+   active. If it was changed, release the safety switch.
+6. **Disarmed.** The passthrough only runs while disarmed. When armed, the nozzle
+   follows the attitude controller instead.
+7. **Mode and stick travel.** Use Stabilize and move the sticks fully.
+8. **Servo range.** Check `SERVOx_MIN`, `SERVOx_MAX` and `SERVOx_TRIM` are
+   sensible (for example 1000, 2000 and 1500).
 
 ### Will not arm
 
