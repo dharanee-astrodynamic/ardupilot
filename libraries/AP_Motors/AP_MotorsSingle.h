@@ -2,6 +2,10 @@
 /// @brief	Motor and Servo control class for Singlecopters
 #pragma once
 
+#include "AP_Motors_config.h"
+
+#if AP_MOTORS_SINGLE_ENABLED
+
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>        // ArduPilot Mega Vector/Matrix math Library
 #include "AP_MotorsMulticopter.h"
@@ -67,3 +71,5 @@ protected:
     float               _thrust_out;
     bool                _tvc;                     // true for FRAME_TYPE TVC
 };
+
+#endif  // AP_MOTORS_SINGLE_ENABLED
