@@ -3215,6 +3215,13 @@ class TestSuite(abc.ABC):
 
         ret = set()
 
+        # NPTR is emitted with WriteCritical from H7-only memprotect-trace
+        # code, so our C++ parsing never finds it, but it is documented and
+        # must stay documented
+        ret.update([
+            "NPTR",
+        ])
+
         # messages not expected to be on particular vehicles.  Nothing
         # needs fixing below this point, unless you can come up with a
         # better way to avoid this list!
@@ -3364,6 +3371,11 @@ class TestSuite(abc.ABC):
         for name in sorted(docco_ids):
             if name not in code_ids and name not in whitelist:
                 missing.append(name)
+                continue
+            if name not in code_ids:
+                # whitelisted and not parsed out of the C++ (e.g. a
+                # WriteCritical message), so there are no code labels to
+                # check the documentation against
                 continue
             for label in docco_ids[name]["labels"]:
                 if label not in code_ids[name]["labels"].split(","):
@@ -9178,6 +9190,85 @@ class TestSuite(abc.ABC):
             raise NotAchievedException("Expected %s to be %u got %u" %
                                        (channel, value, m_value))
 
+    def radio_rc_channels_value_to_pwm(self, value):
+        '''convert a RADIO_RC_CHANNELS channel value (centered 13-bit; range
+        [-4096,4096], centre 0) into the PWM value ArduPilot derives from
+        it.  Mirrors AP_RCProtocol_MAVLinkRadio, including C's
+        truncation-towards-zero integer division.'''
+        scaled = value * 5
+        if scaled < 0:
+            return 1500 - ((-scaled) // 32)
+        return 1500 + (scaled // 32)
+
+    def send_radio_rc_channels(self, values, flags=0, count=None, time_last_update_ms=0):
+        '''send a RADIO_RC_CHANNELS message; values are in the centered
+        13-bit format the message specifies.  The message always carries 32
+        channels, so count - which defaults to the number of values supplied
+        - is the only thing saying how many of them are real.'''
+        if len(values) > 32:
+            raise ValueError("RADIO_RC_CHANNELS carries at most 32 channels")
+        if count is None:
+            count = len(values)
+        channels = list(values) + [0] * (32 - len(values))
+        self.mav.mav.radio_rc_channels_send(
+            self.mav.target_system,
+            self.mav.target_component,
+            time_last_update_ms,
+            flags,
+            count,
+            channels,
+        )
+
+    def radio_rc_channels_pump(self, values, flags, mtype, check, timeout, what, count=None):
+        '''feed RADIO_RC_CHANNELS messages to the vehicle until check()
+        returns True for a received message of type mtype.  The frames have
+        to keep flowing while we wait, or the vehicle simply loses RC.'''
+        tstart = self.get_sim_time()
+        while True:
+            if self.get_sim_time_cached() - tstart > timeout:
+                raise NotAchievedException("Timed out waiting for %s" % what)
+            self.send_radio_rc_channels(values, flags=flags, count=count)
+            m = self.mav.recv_match(type=mtype, blocking=True, timeout=0.05)
+            if m is None:
+                continue
+            if check(m):
+                return m
+
+    def assert_radio_rc_channels_maintains(self, values, flags, mtype, check, duration, what, count=None):
+        '''feed RADIO_RC_CHANNELS messages to the vehicle for duration
+        seconds, failing if check() is ever False for a received message of
+        type mtype - or if no such message turns up at all, which would
+        otherwise pass vacuously'''
+        seen = False
+        tstart = self.get_sim_time()
+        while self.get_sim_time_cached() - tstart < duration:
+            self.send_radio_rc_channels(values, flags=flags, count=count)
+            m = self.mav.recv_match(type=mtype, blocking=True, timeout=0.05)
+            if m is None:
+                continue
+            seen = True
+            if not check(m):
+                raise NotAchievedException(what)
+        if not seen:
+            raise NotAchievedException("No %s received while checking for %s" % (mtype, what))
+
+    def wait_radio_rc_channels_pwm(self, values, expected_pwm, expected_chancount, count=None, timeout=20):
+        '''feed RADIO_RC_CHANNELS until RC_CHANNELS reports expected_pwm in
+        its first len(expected_pwm) channels'''
+        def check(m):
+            if m.chancount != expected_chancount:
+                self.progress("RC_CHANNELS chancount=%u want=%u" %
+                              (m.chancount, expected_chancount))
+                return False
+            got = [getattr(m, "chan%u_raw" % (i+1)) for i in range(len(expected_pwm))]
+            if got != expected_pwm:
+                self.progress("RC_CHANNELS got=%s want=%s" % (got, expected_pwm))
+                return False
+            return True
+        return self.radio_rc_channels_pump(
+            values, 0, 'RC_CHANNELS', check, timeout,
+            "RC_CHANNELS to match RADIO_RC_CHANNELS", count=count)
+
     def _rc_overrides_send_single(self, chan, pwm):
         '''Send RC_CHANNELS_OVERRIDE targeting a single channel; others are UINT16_MAX (ignore)'''
         channels = [65535] * 18
@@ -10134,7 +10225,10 @@ Also, ignores heartbeats not from our target system'''
                     result.reason = reason
                     result.passed = False
         else:
-            self.progress("pexpect says it is dead")
+            # how it died is the whole question: a signal says it crashed
+            # or was killed, an exit status says it chose to go
+            self.progress("pexpect says it is dead (exitstatus=%s signalstatus=%s)" %
+                          (self.sitl.exitstatus, self.sitl.signalstatus))
 
         # try dumping the process status file for more information:
         status_filepath = "/proc/%u/status" % self.sitl.pid
@@ -10957,7 +11051,14 @@ Also, ignores heartbeats not from our target system'''
 
         # HOME_POSITION is used as a surrogate for origin until we
         # start emitting GPS_GLOBAL_ORIGIN
-        self.wait_ekf_happy()
+        #
+        # the filter will not use GPS until the gyro bias is learned,
+        # which on Tracker takes 43 to 45.7 simulated seconds from
+        # boot.  This budget is counted from here rather than from
+        # boot, so the default 45 leaves only whatever the test spent
+        # getting this far - under four seconds in the tightest case
+        # measured.
+        self.wait_ekf_happy(timeout=120)
         orig_home = self.poll_home_position()
         if orig_home is None:
             raise AutoTestTimeoutException()
@@ -18713,6 +18814,19 @@ switch value'''
             bad_prefix = record(2, b'X', struct.pack('<h', 1300), common_len=8)
             upload('prefix longer than previous name', previous + bad_prefix, 2, valid=False)
             self.assert_parameter_value('RC7_MIN', 1200)
+
+            # A rejected upload must not apply any of the records before the bad one.
+            good = record(2, b'RC7_MIN', struct.pack('<h', 1300))
+            bad_records = [
+                ('missing', b''),
+                ('truncated', record(2, b'RC7_MAX', struct.pack('<h', 1900))[:-1]),
+                ('flagged', bytes([0x12]) + record(2, b'RC7_MAX', struct.pack('<h', 1900))[1:]),
+                ('unsupported type', record(5, b'RC7_MAX', bytes(12))),
+                ('bad prefix', record(2, b'X', struct.pack('<h', 1900), common_len=8)),
+            ]
+            for label, bad in bad_records:
+                upload(f'valid record before a {label} record is not applied', good + bad, 2, valid=False)
+                self.assert_parameter_value('RC7_MIN', 1200)
 
             longest_name = record(2, b'NO_SUCH_PARAM_AB', struct.pack('<h', 123))
             complete = record(2, b'RC7_MIN', struct.pack('<h', 1250))

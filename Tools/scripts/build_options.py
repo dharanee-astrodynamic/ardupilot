@@ -60,6 +60,7 @@ BUILD_OPTIONS = [
     Feature('AHRS', 'EKF3_WINDEST', 'EK3_FEATURE_DRAG_FUSION', 'Enable Wind estimation for EKF3', 0, 'EKF3'),
     Feature('AHRS', 'EKF3_OPTFLOW', 'EK3_FEATURE_OPTFLOW_FUSION', 'Enable OpticalFlow fusion for EKF3', 0, 'EKF3,OPTICALFLOW'),
     Feature('AHRS', 'EKF3_OPTFLOW_SRTM', 'EK3_FEATURE_OPTFLOW_SRTM', 'Enable OpticalFlow using SRTM for EKF3', 0, 'EKF3_OPTFLOW'),  # noqa: E501
+    Feature('AHRS', 'EKF3_OPTFLOW_AGL_KF', 'EK3_FEATURE_OPTFLOW_AGL_KF', 'Enable OpticalFlow AGL Kalman filter for EKF3', 0, 'EKF3_OPTFLOW'),  # noqa: E501
     Feature('AHRS', 'EKF3_RESET', 'AP_AHRS_EKF_RESET_ENABLED', 'Enable EKF bootstrap reset aux function', 1, 'EKF3'),
     Feature('AHRS', 'AHRS_POS_RESET', 'AP_AHRS_POSITION_RESET_ENABLED', 'Enable setting position from external position estimates', 0, 'EKF3'),  # noqa: E501
     Feature('AHRS', 'BARO_WIND_COMP', 'HAL_BARO_WIND_COMP_ENABLED', 'Enable Baro wind compensation', 0, None),
@@ -69,7 +70,7 @@ BUILD_OPTIONS = [
     Feature('Safety', 'RALLY', 'HAL_RALLY_ENABLED', 'Enable Rally points', 0, None),  # noqa
     Feature('Safety', 'AC_AVOID', 'AP_AVOIDANCE_ENABLED', 'Enable Object Avoidance', 0, 'FENCE'),
     Feature('Safety', 'AC_OAPATHPLANNER', 'AP_OAPATHPLANNER_ENABLED', 'Enable Object Avoidance Path Planner', 0, 'FENCE'),
-    Feature('Safety', 'AC_AVOID_ALTHOLD', 'AP_AVOIDANCE_ALTHOLD_ENABLED', 'Enable angle based avoidance in AltHold', 0, 'AC_AVOID,PROXIMITY'),  # noqa: E501
+    Feature('Safety', 'AC_AVOID_ALTHOLD', 'AP_AVOIDANCE_ALTHOLD_ENABLED', 'Enable angle based avoidance in AltHold', 0, 'AC_AVOID,PROXIMITY,MODE_ALTHOLD'),  # noqa: E501
 
     Feature('Battery', 'BATTERY_FUELFLOW', 'AP_BATTERY_FUELFLOW_ENABLED', 'Enable Fuel flow battery monitor', 0, None),
     Feature('Battery', 'BATTERY_FUELLEVEL_PWM', 'AP_BATTERY_FUELLEVEL_PWM_ENABLED', 'Enable PWM Fuel level battery monitor', 0, None),  # noqa: E501
@@ -213,7 +214,7 @@ BUILD_OPTIONS = [
     Feature('Rover', 'ROVER_AUTO_ARM_ONCE', 'AP_ROVER_AUTO_ARM_ONCE_ENABLED', 'Make Auto-Arm-Once functionality available', 0, None),  # NOQA: E501
 
     Feature('Mission', 'MISSION_NAV_PAYLOAD_PLACE', 'AP_MISSION_NAV_PAYLOAD_PLACE_ENABLED', 'Enable NAV_PAYLOAD_PLACE', 0, None),  # noqa
-    Feature('Mission', 'MISSION_WPNEXT_OFFSET', 'AP_MISSION_MAV_CMD_DO_SET_ROI_WPNEXT_OFFSET_ENABLED', 'Enable SET_ROI_WPNEXT_OFFSET command', 0, None),  # noqa
+    Feature('Mission', 'MISSION_WPNEXT_OFFSET', 'AP_MISSION_MAV_CMD_DO_SET_ROI_WPNEXT_OFFSET_ENABLED', 'Enable SET_ROI_WPNEXT_OFFSET command', 0, "MOUNT_WPNEXT_OFFSET"),  # noqa
 
     Feature('Copter', 'AC_PAYLOAD_PLACE_ENABLED', 'AC_PAYLOAD_PLACE_ENABLED', 'Enable Copter Payload Place', 0, 'MISSION_NAV_PAYLOAD_PLACE'),  # noqa
 
@@ -486,6 +487,7 @@ BUILD_OPTIONS = [
     Feature('Developer', 'KILL_IMU', 'AP_INERTIALSENSOR_KILL_IMU_ENABLED', 'Allow IMUs to be disabled at runtime', 0, None),
     Feature('Developer', 'CRASHDUMP_FLASH', 'AP_CRASHDUMP_FLASH_ENABLED', 'Enable crash dumps to flash', 0, None),
     Feature('Developer', 'CRASHDUMP_FATFS', 'AP_CRASHDUMP_FATFS_ENABLED', 'Enable crash dumps to microSD', 0, None),
+    Feature('Developer', 'MEMPROTECT_TRACE', 'AP_BOARDCONFIG_MCU_MEMPROTECT_TRACE_ENABLED', 'Enable trapping and logging of null pointer accesses (H7 with internal flash only)', 1, None),  # noqa:E501
     Feature('Developer', 'FAILURE_INJECTION', 'AP_MAVLINK_FAILURE_CREATION_ENABLED', 'Enable autopilot failure injection via MAVLink ', 0, None),  # noqa:E501
 
     Feature('GPS Drivers', 'UBLOX', 'AP_GPS_UBLOX_ENABLED', 'Enable U-blox GPS', 1, None),

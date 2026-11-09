@@ -360,6 +360,7 @@ AP_HW_CORVON_V6                      1230
 
 
 # IDs 1231-1240 reserved for YARI Robotics
+AP_HW_YARIV6S                        1233
 AP_HW_YARIV6X                        1234
 AP_HW_YARI_GNSS                      1235
 AP_HW_YARI_RTK_GNSS                  1236
@@ -439,6 +440,7 @@ AP_HW_BCUBEF745V2                    1511
 
 AP_HW_HGLRCF405V4                    1524
 AP_HW_HGLRC_H743_EVO                 1525
+AP_HW_HGLRC_H743_PRO                 1526
 
 AP_HW_F4BY_F427                      1530
 AP_HW_F4BY_H743                      1531
@@ -487,6 +489,7 @@ AP_HW_AET-H743-Basic                 2024
 
 AP_HW_BOTWINGF405                    2501
 
+AP_HW_AET-H743-AIR-Por               2508
 AP_HW_AET-H743-AIR                   2509
 AP_HW_AET-U7                         2510
 AP_HW_AET-AT405A                     2511
@@ -619,6 +622,7 @@ AP_HW_ZenFC_H743                     5740
 
 #IDs 5800-5809 reserved for Droneer
 AP_HW_DroneerF405                    5800
+AP_HW_DroneerX6                      5801
 
 #IDs 5810-5819 reserved for Brother Hobby
 AP_HW_BrotherHobbyH743               5810
@@ -629,6 +633,7 @@ AP_HW_VIMDRONES_BMS                  5820
 
 #IDs 5830 ~ 5839 reserved for CyberX
 AP_HW_CyberX-v10                     5830
+AP_HW_CyberX-Cube                    5831
 
 # IDs 5900-5904 reserved for NewBeeDrone PixNova
 AP_HW_NewBeeDrone_PixNova            5900
